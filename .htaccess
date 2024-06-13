@@ -1,0 +1,8 @@
+<Files "userdata.db">
+    Require all denied
+</Files>
+
+<FilesMatch "\.(?i:db)$">
+    Require all denied
+</FilesMatch>
+
