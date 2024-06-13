@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # This script manages a SQLite database to store user records with secure tokens.
-# It provides functionality to initialize the database, insert/update user records,
+# It provides functionality to initialize the database, insert/update/delete user records,
 # and set permissions of the database file.
 
 # SQLite database configuration
@@ -72,13 +72,29 @@ insert_or_update_user() {
     fi
 }
 
+# Function to delete a user record
+delete_user() {
+    local user_id=$1
+
+    # Check if the database exists
+    if [ ! -f "$db_path" ]; then
+        echo "Error: Database doesn't exist. Run the script with the '-i' or '--init' option to create the database."
+        exit 1
+    fi
+
+    # Delete the user record
+    sqlite3 "$db_path" "DELETE FROM users WHERE user_id = $user_id"
+    echo "User record deleted successfully."
+}
+
 # Function to display usage message
 display_usage() {
-    echo "Usage: $0 [-i|--init] [-p|--permissions] [<user_id>]"
+    echo "Usage: $0 [-i|--init] [-p|--permissions] [-d|--delete <user_id>] [<user_id>]"
     echo "Options:"
     echo "  -i, --init         Initialize the database"
     echo "  -p, --permissions  Set database file permissions to 644"
-    echo "Arguments (required when not initializing database):"
+    echo "  -d, --delete       Delete a user record by user_id"
+    echo "Arguments (required when not initializing database or deleting a user):"
     echo "  user_id            User ID"
 }
 
@@ -92,6 +108,10 @@ while [[ "$#" -gt 0 ]]; do
         -p|--permissions)
             set_permissions_flag=true
             shift
+            ;;
+        -d|--delete)
+            delete_user_id="$2"
+            shift 2
             ;;
         -*)
             display_usage
@@ -108,7 +128,7 @@ done
 if [ "$set_permissions_flag" = true ]; then
     set_permissions
     # Exit if only setting permissions
-    if [ -z "$init_db" ] && [ -z "$user_id" ]; then
+    if [ -z "$init_db" ] && [ -z "$user_id" ] && [ -z "$delete_user_id" ]; then
         exit 0
     fi
 fi
@@ -117,6 +137,12 @@ fi
 if [ "$init_db" = true ]; then
     create_database
     exit 0  # Exit after database initialization if no user_id is provided
+fi
+
+# Handle deleting a user if the delete option is set
+if [ -n "$delete_user_id" ]; then
+    delete_user "$delete_user_id"
+    exit 0
 fi
 
 # If user_id is provided, generate token and insert/update user record
@@ -128,7 +154,7 @@ if [ -n "$user_id" ]; then
 fi
 
 # If no arguments provided after options and not initializing database, display usage
-if [ -z "$init_db" ] && [ -z "$user_id" ] && [ -z "$set_permissions_flag" ]; then
+if [ -z "$init_db" ] && [ -z "$user_id" ] && [ -z "$set_permissions_flag" ] && [ -z "$delete_user_id" ]; then
     display_usage
     exit 1
 fi
